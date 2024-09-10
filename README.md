@@ -1,2 +1,2 @@
-# SafeTrade.go
+# SafeTrade
 SafeTrade trading library in Golang
