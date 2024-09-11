@@ -1,4 +1,4 @@
-module github.com/profilelag/SafeTrade
+module github.com/profilelag/safetrade
 
 go 1.23
 
