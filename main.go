@@ -23,7 +23,7 @@ func RequestMaker(key string, secret string) func (method string, path string, d
 			"X-Auth-Signature": {hex.EncodeToString(hmac_sign.Sum(nil))},
 			"content-type": {"application/json"},
 		}
-		req, err := http.NewRequest(method, path, nil)
+		req, err := http.NewRequest(method, "https://safe.trade/api/v2" + path, nil)
 		req.Header = headers
 		return req, err
 	}
