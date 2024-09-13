@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 	"testing"
-	"time"
 
+	_ "github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
@@ -15,7 +15,6 @@ func TestNewRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal("Error loading .env file")
 	}
-	t.Log(time.Now().UnixMicro()/1000)
 	key := os.Getenv("KEY")
 	secret := os.Getenv("SECRET")
 	method := "GET"
@@ -40,4 +39,25 @@ func TestNewRequest(t *testing.T) {
 		t.Fatal("Status code is not 200")
 	}
 	t.Log("Status code is 200")
+}
+
+func TestGetSpotAccounts(t *testing.T) {
+	err := godotenv.Load()
+	if err != nil {
+		t.Fatal("Error loading .env file")
+		return
+	}
+	key := os.Getenv("KEY")
+	secret := os.Getenv("SECRET")
+	spotaccounts, err := GetSpotAccounts(key, secret)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	t.Fatal(spotaccounts)
+	for _, spotaccount := range spotaccounts {
+		if(spotaccount.Balance != 0) {
+			t.Fatal(spotaccount.Balance)
+		}
+	}
 }
