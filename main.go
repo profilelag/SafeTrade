@@ -17,21 +17,17 @@ import (
 type FloatLike float64
 
 func (b *FloatLike) UnmarshalJSON(data []byte) error {
+	// Try to unmarshal as float64 or string then float
 	var floatVal float64
-	var stringVal string
-
-	// Try to unmarshal as float64
 	if err := json.Unmarshal(data, &floatVal); err == nil {
 		*b = FloatLike(floatVal)
 		return nil
 	}
-
-	// Try to unmarshal as string
+	var stringVal string
 	if err := json.Unmarshal(data, &stringVal); err == nil {
-		// Convert string to float64
 		f, err := strconv.ParseFloat(stringVal, 64)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to parse float from string: %s", err)
 		}
 		*b = FloatLike(f)
 		return nil
@@ -41,22 +37,24 @@ func (b *FloatLike) UnmarshalJSON(data []byte) error {
 }
 
 type SpotAccount struct {
-	Balance           FloatLike `json:"balance"`
-	Currency           string `json:"currency"`
+	Balance          FloatLike `json:"balance"`
+	Currency         string    `json:"currency"`
 	DepositAddresses []struct {
-		Address    string `json:"address"`
+		Address    string   `json:"address"`
 		Currencies []string `json:"currencies"`
-		Network    string `json:"network"`
+		Network    string   `json:"network"`
 	} `json:"deposit_addresses"`
 	Locked FloatLike `json:"locked"`
-	Type  string `json:"type"`
+	Type   string    `json:"type"`
 }
 
 func NewRequest(key string, secret string, method string, path string, data []byte) (*http.Request, error) {
-	nonce := fmt.Sprintf("%d", time.Now().UnixMicro()/1000)
+	nonce := fmt.Sprintf("%d", time.Now().UnixMilli())
 	signature := nonce + key
 	hmac_sign := hmac.New(sha256.New, []byte(secret))
-	hmac_sign.Write([]byte(signature))
+	if _, err := hmac_sign.Write([]byte(signature)); err != nil {
+		return nil, fmt.Errorf("Failed HMAC signing request: %s", err)
+	}
 	headers := http.Header{
 		"X-Auth-Apikey":    {key},
 		"X-Auth-Nonce":     {nonce},
@@ -64,6 +62,9 @@ func NewRequest(key string, secret string, method string, path string, data []by
 		"content-type":     {"application/json"},
 	}
 	req, err := http.NewRequest(method, "https://safe.trade/api/v2"+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create request: %s", err)
+	}
 	req.Header = headers
 	return req, err
 }
@@ -77,29 +78,26 @@ func RequestMaker(key string, secret string) func(method string, path string, da
 func GetSpotAccounts(key string, secret string) ([]SpotAccount, error) {
 	req, err := RequestMaker(key, secret)("GET", "/trade/account/balances/spot", []byte(`{}`))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to build request: %s", err)
 	}
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to send request: %s", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status code is not 200")
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Status code is not OK: %d", resp.StatusCode)
 	}
 	spotaccounts := []SpotAccount{}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to read response body: %s", err)
 	}
 
-	// use bodyBytes to decode the response into a struct
-	// Unmarshal the response into the slice of SpotAccount structs
-	err = json.Unmarshal(bodyBytes, &spotaccounts)
-	if err != nil {
-		return nil, err
+	if err := json.Unmarshal(bodyBytes, &spotaccounts); err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal response body: %s", err)
 	}
 	return spotaccounts, nil
 }
