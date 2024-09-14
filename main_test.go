@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package safetrade
 
 import (
@@ -56,7 +59,7 @@ func TestGetSpotAccounts(t *testing.T) {
 	}
 	t.Fatal(spotaccounts)
 	for _, spotaccount := range spotaccounts {
-		if(spotaccount.Balance != 0) {
+		if spotaccount.Balance != 0 {
 			t.Fatal(spotaccount.Balance)
 		}
 	}
